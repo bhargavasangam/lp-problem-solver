@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Interactive LP Solver with GLPK.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      background-color: #f7f7f7;
+    }
+    h1, h2 {
+      margin-bottom: 0.4em;
+    }
+    .section {
+      background: #fff;
+      margin-bottom: 1.5em;
+      padding: 1em;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .input-row {
+      margin-bottom: 0.5em;
+    }
+    label {
+      display: inline-block;
+      width: 280px;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    input[type="number"] {
+      width: 100px;
+      margin-right: 5px;
+    }
+    button {
+      margin: 1em 0;
+      padding: 0.5em 1em;
+      font-size: 1em;
+      cursor: pointer;
+      border: 1px solid #777;
+      border-radius: 5px;
+      background: #eee;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      font-size: 0.9em;
+      margin-top: 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: vertical;
+    }
+    .notes {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Title & Description -->
+<div class="section">
+  <h1>Interactive LP: Cement & Steel Procurement</h1>
+  <p>
+    This example uses <strong>glpk.js</strong> to solve a linear program for 
+    purchasing <em>Cement</em> and <em>Steel</em> from three suppliers (A, B, C).
+    <br><br>
+    You can modify <strong>demand</strong>, <strong>supplier capacities</strong>, 
+    <strong>costs</strong>, and the <strong>storage limit</strong> below. Then click 
+    <em>Solve LP</em> to see the optimal solution (or a note if infeasible).
+  </p>
+</div>
+
+<!-- Form for user inputs -->
+<div class="section">
+  <h2>1. Model Inputs</h2>
+
+  <!-- Demand Section -->
+  <div class="input-row">
+    <label for="cementDemand">Cement Demand (tons):</label>
+    <input type="number" id="cementDemand" value="1500" step="10" />
+  </div>
+  <div class="input-row">
+    <label for="steelDemand">Steel Demand (tons):</label>
+    <input type="number" id="steelDemand" value="900" step="10" />
+  </div>
+
+  <hr>
+
+  <!-- Supplier A -->
+  <h3>Supplier A</h3>
+  <div class="input-row">
+    <label for="aCementMax">Max Cement (tons):</label>
+    <input type="number" id="aCementMax" value="500" />
+  </div>
+  <div class="input-row">
+    <label for="aSteelMax">Max Steel (tons):</label>
+    <input type="number" id="aSteelMax" value="200" />
+  </div>
+  <div class="input-row">
+    <label for="aCementCost">Cement Cost ($/ton):</label>
+    <input type="number" id="aCementCost" value="70" step="1" />
+  </div>
+  <div class="input-row">
+    <label for="aSteelCost">Steel Cost ($/ton):</label>
+    <input type="number" id="aSteelCost" value="120" step="1" />
+  </div>
+
+  <hr>
+
+  <!-- Supplier B -->
+  <h3>Supplier B</h3>
+  <div class="input-row">
+    <label for="bCementMax">Max Cement (tons):</label>
+    <input type="number" id="bCementMax" value="400" />
+  </div>
+  <div class="input-row">
+    <label for="bSteelMax">Max Steel (tons):</label>
+    <input type="number" id="bSteelMax" value="300" />
+  </div>
+  <div class="input-row">
+    <label for="bCementCost">Cement Cost ($/ton):</label>
+    <input type="number" id="bCementCost" value="75" step="1" />
+  </div>
+  <div class="input-row">
+    <label for="bSteelCost">Steel Cost ($/ton):</label>
+    <input type="number" id="bSteelCost" value="115" step="1" />
+  </div>
+
+  <hr>
+
+  <!-- Supplier C -->
+  <h3>Supplier C</h3>
+  <div class="input-row">
+    <label for="cCementMax">Max Cement (tons):</label>
+    <input type="number" id="cCementMax" value="600" />
+  </div>
+  <div class="input-row">
+    <label for="cSteelMax">Max Steel (tons):</label>
+    <input type="number" id="cSteelMax" value="250" />
+  </div>
+  <div class="input-row">
+    <label for="cCementCost">Cement Cost ($/ton):</label>
+    <input type="number" id="cCementCost" value="72" step="1" />
+  </div>
+  <div class="input-row">
+    <label for="cSteelCost">Steel Cost ($/ton):</label>
+    <input type="number" id="cSteelCost" value="125" step="1" />
+  </div>
+
+  <hr>
+
+  <!-- Storage Limit -->
+  <h3>Site Storage</h3>
+  <div class="input-row">
+    <label for="siteStorage">Max total materials (tons):</label>
+    <input type="number" id="siteStorage" value="1000" />
+  </div>
+
+  <hr>
+
+  <button id="solveBtn">Solve LP</button>
+
+  <h3>Solution Output:</h3>
+  <textarea id="solutionBox" readonly></textarea>
+</div>
+
+<!-- 2) Load GLPK.js from a CDN -->
+<script src="https://cdn.jsdelivr.net/npm/glpk.js@0.19.2/dist/glpk.min.js"></script>
+
+<!-- 3) Interactive Solver Script -->
+<script>
+  const solveBtn    = document.getElementById('solveBtn');
+  const solutionBox = document.getElementById('solutionBox');
+
+  solveBtn.addEventListener('click', () => {
+    // Clear the output area
+    solutionBox.value = "Solving... please wait.";
+
+    // 1) Gather user inputs
+    const cementDemand = parseFloat(document.getElementById('cementDemand').value);
+    const steelDemand  = parseFloat(document.getElementById('steelDemand').value);
+
+    const aCementMax   = parseFloat(document.getElementById('aCementMax').value);
+    const aSteelMax    = parseFloat(document.getElementById('aSteelMax').value);
+    const aCementCost  = parseFloat(document.getElementById('aCementCost').value);
+    const aSteelCost   = parseFloat(document.getElementById('aSteelCost').value);
+
+    const bCementMax   = parseFloat(document.getElementById('bCementMax').value);
+    const bSteelMax    = parseFloat(document.getElementById('bSteelMax').value);
+    const bCementCost  = parseFloat(document.getElementById('bCementCost').value);
+    const bSteelCost   = parseFloat(document.getElementById('bSteelCost').value);
+
+    const cCementMax   = parseFloat(document.getElementById('cCementMax').value);
+    const cSteelMax    = parseFloat(document.getElementById('cSteelMax').value);
+    const cCementCost  = parseFloat(document.getElementById('cCementCost').value);
+    const cSteelCost   = parseFloat(document.getElementById('cSteelCost').value);
+
+    const storageLimit = parseFloat(document.getElementById('siteStorage').value);
+
+    // 2) Define Decision Variables:
+    // xAC, xAS, xBC, xBS, xCC, xCS
+    // Build the LP in glpk.js format
+    const lpProblem = {
+      name: "CementSteelProcurement",
+      objective: {
+        direction: glpk.GLP_MIN,
+        name: "totalCost",
+        vars: [
+          { name: "xAC", coef: aCementCost },
+          { name: "xAS", coef: aSteelCost  },
+          { name: "xBC", coef: bCementCost },
+          { name: "xBS", coef: bSteelCost  },
+          { name: "xCC", coef: cCementCost },
+          { name: "xCS", coef: cSteelCost  }
+        ]
+      },
+      subjectTo: [
+        // Demand: Cement
+        {
+          name: "DemandCement",
+          vars: [
+            { name: "xAC", coef: 1 },
+            { name: "xBC", coef: 1 },
+            { name: "xCC", coef: 1 }
+          ],
+          bnds: {
+            type: glpk.GLP_LO, // >=
+            val: cementDemand
+          }
+        },
+        // Demand: Steel
+        {
+          name: "DemandSteel",
+          vars: [
+            { name: "xAS", coef: 1 },
+            { name: "xBS", coef: 1 },
+            { name: "xCS", coef: 1 }
+          ],
+          bnds: {
+            type: glpk.GLP_LO,
+            val: steelDemand
+          }
+        },
+        // Supplier A capacities
+        {
+          name: "A_CementCap",
+          vars: [{ name: "xAC", coef: 1 }],
+          bnds: { type: glpk.GLP_UP, val: aCementMax }
+        },
+        {
+          name: "A_SteelCap",
+          vars: [{ name: "xAS", coef: 1 }],
+          bnds: { type: glpk.GLP_UP, val: aSteelMax }
+        },
+        // Supplier B capacities
+        {
+          name: "B_CementCap",
+          vars: [{ name: "xBC", coef: 1 }],
+          bnds: { type: glpk.GLP_UP, val: bCementMax }
+        },
+        {
+          name: "B_SteelCap",
+          vars: [{ name: "xBS", coef: 1 }],
+          bnds: { type: glpk.GLP_UP, val: bSteelMax }
+        },
+        // Supplier C capacities
+        {
+          name: "C_CementCap",
+          vars: [{ name: "xCC", coef: 1 }],
+          bnds: { type: glpk.GLP_UP, val: cCementMax }
+        },
+        {
+          name: "C_SteelCap",
+          vars: [{ name: "xCS", coef: 1 }],
+          bnds: { type: glpk.GLP_UP, val: cSteelMax }
+        },
+        // Storage Limit
+        {
+          name: "StorageLimit",
+          vars: [
+            { name: "xAC", coef: 1 },
+            { name: "xAS", coef: 1 },
+            { name: "xBC", coef: 1 },
+            { name: "xBS", coef: 1 },
+            { name: "xCC", coef: 1 },
+            { name: "xCS", coef: 1 }
+          ],
+          bnds: {
+            type: glpk.GLP_UP, // <=
+            val: storageLimit
+          }
+        }
+      ],
+      bounds: [
+        // Non-negativity
+        { name: "xAC", type: glpk.GLP_LO, val: 0 },
+        { name: "xAS", type: glpk.GLP_LO, val: 0 },
+        { name: "xBC", type: glpk.GLP_LO, val: 0 },
+        { name: "xBS", type: glpk.GLP_LO, val: 0 },
+        { name: "xCC", type: glpk.GLP_LO, val: 0 },
+        { name: "xCS", type: glpk.GLP_LO, val: 0 }
+      ]
+    };
+
+    // 3) Solve with GLPK
+    try {
+      const result = glpk.solve(lpProblem);
+      if (result && result.result) {
+        const r = result.result;
+        // Extract variables
+        const xAC = r.xAC?.toFixed(2) || "0";
+        const xAS = r.xAS?.toFixed(2) || "0";
+        const xBC = r.xBC?.toFixed(2) || "0";
+        const xBS = r.xBS?.toFixed(2) || "0";
+        const xCC = r.xCC?.toFixed(2) || "0";
+        const xCS = r.xCS?.toFixed(2) || "0";
+        const minCost = (r.z || 0).toFixed(2);
+
+        solutionBox.value =
+          "Optimal Solution:\n\n" +
+          `Supplier A -> Cement: ${xAC} tons, Steel: ${xAS} tons\n` +
+          `Supplier B -> Cement: ${xBC} tons, Steel: ${xBS} tons\n` +
+          `Supplier C -> Cement: ${xCC} tons, Steel: ${xCS} tons\n\n` +
+          "Minimum Total Cost = $" + minCost;
+      } else {
+        solutionBox.value = "No feasible solution or solver error.";
+      }
+    } catch (err) {
+      console.error("GLPK error:", err);
+      solutionBox.value = "Error: " + err.message;
+    }
+  });
+</script>
+
+<div class="section notes">
+  <p><strong>Tip:</strong> If you see an error <em>"glpk is not defined"</em>, ensure you're serving this file over HTTP/HTTPS, not <code>file://</code>. Check browser console for details.</p>
+  <p>You can extend this model to multiple time periods or dynamic inventory by adding per-period variables (e.g., <code>xAC_t</code>), constraints, and storage logic.</p>
+</div>
+
+</body>
+</html>
