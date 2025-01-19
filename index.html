@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Interactive LP Solver with GLPK.js</title>
+  <!-- Prevent 404 on favicon by using a blank data URI: -->
+  <link rel="icon" href="data:,">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -167,10 +169,10 @@
   <textarea id="solutionBox" readonly></textarea>
 </div>
 
-<!-- 2) Load GLPK.js from a CDN -->
+<!-- Load GLPK.js from a CDN -->
 <script src="https://cdn.jsdelivr.net/npm/glpk.js@0.19.2/dist/glpk.min.js"></script>
 
-<!-- 3) Interactive Solver Script -->
+<!-- Interactive Solver Script -->
 <script>
   const solveBtn    = document.getElementById('solveBtn');
   const solutionBox = document.getElementById('solutionBox');
@@ -310,7 +312,7 @@
       const result = glpk.solve(lpProblem);
       if (result && result.result) {
         const r = result.result;
-        // Extract variables
+        // Extract solution variables
         const xAC = r.xAC?.toFixed(2) || "0";
         const xAS = r.xAS?.toFixed(2) || "0";
         const xBC = r.xBC?.toFixed(2) || "0";
@@ -336,9 +338,13 @@
 </script>
 
 <div class="section notes">
-  <p><strong>Tip:</strong> If you see an error <em>"glpk is not defined"</em>, ensure you're serving this file over HTTP/HTTPS, not <code>file://</code>. Check browser console for details.</p>
-  <p>You can extend this model to multiple time periods or dynamic inventory by adding per-period variables (e.g., <code>xAC_t</code>), constraints, and storage logic.</p>
+  <p>
+    <strong>Note:</strong> If you still see <em>"glpk is not defined"</em>, make sure 
+    you are serving this file over <code>http://</code> or <code>https://</code> 
+    (for example, via GitHub Pages), not using <code>file://</code>.
+  </p>
 </div>
 
 </body>
 </html>
+
